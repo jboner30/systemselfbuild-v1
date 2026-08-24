@@ -1,0 +1,1 @@
+removed title card - removed code responsible for the "title screen." User should figure out how to interact for themselves. 
