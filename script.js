@@ -1,8 +1,5 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-const hint = document.querySelector('.hint');
-const titleScreen = document.getElementById('title-screen');
-const startButton = document.getElementById('start-button');
 
 let branches = [];
 let mouse = { x: innerWidth / 2, y: innerHeight / 2 };
@@ -16,8 +13,6 @@ function begin() {
 
   started = true;
   lastSplit = performance.now();
-  titleScreen.classList.add('hidden');
-  hint.style.opacity = 1;
 }
 
 function resize() {
@@ -111,7 +106,6 @@ addEventListener('pointerdown', e => {
   addInitialLine(e.clientX, e.clientY);
   draw();
 });
-startButton.addEventListener('click', begin);
 addEventListener('resize', resize);
 resize();
 requestAnimationFrame(tick);
