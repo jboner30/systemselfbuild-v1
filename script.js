@@ -4,12 +4,15 @@ const clickHint = document.getElementById('click-hint');
 
 let webs = [];
 let nextWebId = 0;
-const maxLines = 400;
+const maxLines = 200;
 const maxVisibleLines = 240;
 const growthInterval = 90;
 const propagationDuration = 15000;
 const fadeStart = 9000;
 const fadeDuration = 6000;
+const webLifetime = 24000;
+const centerFadeStart = 18000;
+const centerFadeDuration = 6000;
 
 function addSegment(web, x1, y1, x2, y2, hue, width) {
   const midX = (x1 + x2) / 2;
@@ -26,6 +29,10 @@ function addSegment(web, x1, y1, x2, y2, hue, width) {
     distanceFromOrigin,
     createdAt: performance.now()
   });
+  web.totalLines += 1;
+  if (web.totalLines >= maxLines) {
+    web.growthStopped = true;
+  }
 }
 
 function seedCracks(web, x, y) {
@@ -43,6 +50,8 @@ function createWeb(x, y) {
   const web = {
     id: nextWebId++,
     segments: [],
+    totalLines: 0,
+    growthStopped: false,
     start: performance.now(),
     lastGrowth: performance.now() - growthInterval,
     x,
@@ -55,7 +64,7 @@ function createWeb(x, y) {
 }
 
 function growWeb(web) {
-  if (web.segments.length >= maxLines) return;
+  if (web.growthStopped) return;
 
   const now = performance.now();
   const elapsed = now - web.start;
@@ -92,7 +101,7 @@ function burstAt(x, y) {
   const web = createWeb(x, y);
   draw();
 
-  if (!webs.some(w => w !== web && w.segments.length < maxLines)) {
+  if (!webs.some(w => w !== web && !w.growthStopped)) {
     requestAnimationFrame(growAll);
   }
 }
@@ -110,16 +119,17 @@ function draw() {
   const now = performance.now();
   const allSegments = webs.flatMap(web => web.segments);
   const visibleSegments = allSegments
-    .filter(segment => now - segment.createdAt < fadeStart + fadeDuration)
+    .filter(segment => {
+      const webAge = now - webs.find(web => web.segments.includes(segment)).start;
+      return webAge < webLifetime;
+    })
     .sort((first, second) => {
-      const firstAge = now - first.createdAt + first.distanceFromOrigin * 5;
-      const secondAge = now - second.createdAt + second.distanceFromOrigin * 5;
-      return firstAge - secondAge;
+      return first.distanceFromOrigin - second.distanceFromOrigin;
     })
     .slice(0, maxVisibleLines);
 
   for (const web of webs) {
-    web.segments = web.segments.filter(segment => now - segment.createdAt < fadeStart + fadeDuration);
+    web.segments = web.segments.filter(segment => now - web.start < webLifetime);
   }
 
   ctx.clearRect(0, 0, innerWidth, innerHeight);
@@ -127,9 +137,13 @@ function draw() {
   ctx.lineJoin = 'round';
 
   for (const segment of visibleSegments) {
-    const age = now - segment.createdAt + segment.distanceFromOrigin * 5;
-    const fadeProgress = Math.max(0, (age - fadeStart) / fadeDuration);
-    const opacity = 0.92 * (1 - fadeProgress);
+    const web = webs.find(candidate => candidate.segments.includes(segment));
+    const webAge = now - web.start;
+    const outerFadeProgress = Math.max(0, (webAge - fadeStart) / fadeDuration);
+    const centerFadeProgress = Math.max(0, (webAge - centerFadeStart) / centerFadeDuration);
+    const outerness = Math.min(1, segment.distanceFromOrigin / 500);
+    const fadeProgress = outerness * outerFadeProgress + (1 - outerness) * centerFadeProgress;
+    const opacity = 0.92 * (1 - Math.min(1, fadeProgress));
 
     ctx.beginPath();
     ctx.moveTo(segment.x1, segment.y1);
