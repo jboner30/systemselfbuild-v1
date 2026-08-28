@@ -7,12 +7,23 @@ let nextWebId = 0;
 const maxLines = 200;
 const maxVisibleLines = 240;
 const growthInterval = 90;
-const propagationDuration = 15000;
-const fadeStart = 9000;
-const fadeDuration = 6000;
-const webLifetime = 24000;
-const centerFadeStart = 18000;
-const centerFadeDuration = 6000;
+const fadeLineDuration = 1200;
+const fadeWaveDuration = 12000;
+
+function startOutsideInFade(web) {
+  if (web.fadeStartedAt !== null) return;
+
+  web.fadeStartedAt = performance.now();
+
+  const orderedSegments = [...web.segments].sort((first, second) => (
+    second.distanceFromOrigin - first.distanceFromOrigin
+  ));
+  const lastIndex = Math.max(1, orderedSegments.length - 1);
+
+  orderedSegments.forEach((segment, index) => {
+    segment.fadeDelay = (index / lastIndex) * fadeWaveDuration;
+  });
+}
 
 function addSegment(web, x1, y1, x2, y2, hue, width) {
   const midX = (x1 + x2) / 2;
@@ -29,9 +40,11 @@ function addSegment(web, x1, y1, x2, y2, hue, width) {
     distanceFromOrigin,
     createdAt: performance.now()
   });
+  web.maxDistance = Math.max(web.maxDistance, distanceFromOrigin);
   web.totalLines += 1;
   if (web.totalLines >= maxLines) {
     web.growthStopped = true;
+    startOutsideInFade(web);
   }
 }
 
@@ -52,6 +65,9 @@ function createWeb(x, y) {
     segments: [],
     totalLines: 0,
     growthStopped: false,
+    fadeStartedAt: null,
+    fadeDelay: 0,
+    maxDistance: 0,
     start: performance.now(),
     lastGrowth: performance.now() - growthInterval,
     x,
@@ -64,11 +80,9 @@ function createWeb(x, y) {
 }
 
 function growWeb(web) {
-  if (web.growthStopped) return;
+  if (web.growthStopped || web.fadeStartedAt !== null) return;
 
   const now = performance.now();
-  const elapsed = now - web.start;
-  if (elapsed >= propagationDuration) return;
   if (now - web.lastGrowth < growthInterval) return;
 
   const branch = web.segments[Math.floor(Math.random() * web.segments.length)];
@@ -98,12 +112,8 @@ function growAll() {
 
 function burstAt(x, y) {
   clickHint.classList.add('hidden');
-  const web = createWeb(x, y);
+  createWeb(x, y);
   draw();
-
-  if (!webs.some(w => w !== web && !w.growthStopped)) {
-    requestAnimationFrame(growAll);
-  }
 }
 
 function resize() {
@@ -117,6 +127,13 @@ function resize() {
 
 function draw() {
   const now = performance.now();
+  webs = webs.filter(web => (
+    web.fadeStartedAt === null ||
+    !web.segments.every(segment => (
+      now - web.fadeStartedAt >= segment.fadeDelay + fadeLineDuration
+    ))
+  ));
+
   const allSegments = webs.flatMap(web => web.segments);
   const visibleSegments = allSegments
     .sort((first, second) => {
@@ -130,11 +147,10 @@ function draw() {
 
   for (const segment of visibleSegments) {
     const web = webs.find(candidate => candidate.segments.includes(segment));
-    const webAge = now - web.start;
-    const outerFadeProgress = Math.max(0, (webAge - fadeStart) / fadeDuration);
-    const centerFadeProgress = Math.max(0, (webAge - centerFadeStart) / centerFadeDuration);
-    const outerness = Math.min(1, segment.distanceFromOrigin / 500);
-    const fadeProgress = outerness * outerFadeProgress + (1 - outerness) * centerFadeProgress;
+    const fadeElapsed = web.fadeStartedAt === null ? 0 : now - web.fadeStartedAt;
+    const fadeProgress = web.fadeStartedAt === null
+      ? 0
+      : Math.max(0, (fadeElapsed - segment.fadeDelay) / fadeLineDuration);
     const opacity = 0.92 * (1 - Math.min(1, fadeProgress));
 
     ctx.beginPath();
