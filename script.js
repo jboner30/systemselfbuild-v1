@@ -119,18 +119,10 @@ function draw() {
   const now = performance.now();
   const allSegments = webs.flatMap(web => web.segments);
   const visibleSegments = allSegments
-    .filter(segment => {
-      const webAge = now - webs.find(web => web.segments.includes(segment)).start;
-      return webAge < webLifetime;
-    })
     .sort((first, second) => {
       return first.distanceFromOrigin - second.distanceFromOrigin;
     })
     .slice(0, maxVisibleLines);
-
-  for (const web of webs) {
-    web.segments = web.segments.filter(segment => now - web.start < webLifetime);
-  }
 
   ctx.clearRect(0, 0, innerWidth, innerHeight);
   ctx.lineCap = 'round';
