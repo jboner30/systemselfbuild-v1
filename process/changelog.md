@@ -2,3 +2,4 @@ removed title card - removed code responsible for the "title screen." User shoul
 introduced cracking - changed from following mouse movement to making a web of cracks whenever the page is clicked. 
 added multiweb - added the ability to have multiple webs on the page at once 
 added small click prompt
+added fading effect - as new lines form, old ones fade
