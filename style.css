@@ -20,3 +20,31 @@ canvas { display: block; width: 100vw; height: 100vh; cursor: crosshair; }
 .hint.hidden {
   opacity: 0;
 }
+
+.status-box {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  padding: 10px 12px;
+  border: 1px solid rgba(151, 213, 255, .22);
+  border-radius: 12px;
+  background: rgba(7, 17, 31, .72);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, .22);
+  color: #dceeff;
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.status-box strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #8ed6ff;
+}
+
+.status-box span {
+  opacity: .9;
+}
